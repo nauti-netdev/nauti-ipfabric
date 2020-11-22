@@ -1,0 +1,3 @@
+httpx
+nauti
+aio-ipfabric>=0.9.0
