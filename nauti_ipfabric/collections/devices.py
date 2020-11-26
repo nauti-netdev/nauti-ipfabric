@@ -56,7 +56,7 @@ class IPFabricDeviceCollection(Collection, DeviceCollection):
 
     def itemize(self, rec: Dict) -> Dict:
         return dict(
-            sn=rec["sn"],
+            sn=rec.get('snHw') or rec['sn'],
             hostname=normalize_hostname(rec["hostname"]),
             ipaddr=rec["loginIp"],
             site=rec["siteName"],
