@@ -31,7 +31,7 @@ from nauti_ipfabric.source import IPFabricSource
 # Exports
 # -----------------------------------------------------------------------------
 
-__all__ = ['IPFabricSiteCollection']
+__all__ = ["IPFabricSiteCollection"]
 
 
 # -----------------------------------------------------------------------------
@@ -39,6 +39,7 @@ __all__ = ['IPFabricSiteCollection']
 #                              CODE BEGINS
 #
 # -----------------------------------------------------------------------------
+
 
 class IPFabricSiteCollection(Collection, SiteCollection):
 
@@ -54,11 +55,17 @@ class IPFabricSiteCollection(Collection, SiteCollection):
     def itemize(self, rec: Dict) -> Dict:
         return {"name": rec["siteName"]}
 
-    async def add_items(self, items: Dict, callback: Optional[CollectionCallback] = None):
+    async def add_items(
+        self, items: Dict, callback: Optional[CollectionCallback] = None
+    ):
         raise NotImplementedError()
 
-    async def update_items(self, items: Dict, callback: Optional[CollectionCallback] = None):
+    async def update_items(
+        self, items: Dict, callback: Optional[CollectionCallback] = None
+    ):
         raise NotImplementedError()
 
-    async def delete_items(self, items: Dict, callback: Optional[CollectionCallback] = None):
+    async def delete_items(
+        self, items: Dict, callback: Optional[CollectionCallback] = None
+    ):
         raise NotImplementedError()

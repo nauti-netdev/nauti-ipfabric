@@ -22,14 +22,14 @@ from nauti.collection import Collection, CollectionCallback
 from nauti.collections.portchans import PortChannelCollection
 from nauti_ipfabric.source import IPFabricSource, IPFabricClient
 
-from nauti.mappings import expand_interface, normalize_hostname
+from nauti.mappings import normalize_hostname
 
 
 # -----------------------------------------------------------------------------
 # Exports
 # -----------------------------------------------------------------------------
 
-__all__ = ['IPFabricPortChannelCollection']
+__all__ = ["IPFabricPortChannelCollection"]
 
 
 # -----------------------------------------------------------------------------
@@ -37,6 +37,7 @@ __all__ = ['IPFabricPortChannelCollection']
 #                              CODE BEGINS
 #
 # -----------------------------------------------------------------------------
+
 
 class IPFabricPortChannelCollection(Collection, PortChannelCollection):
 
@@ -68,17 +69,25 @@ class IPFabricPortChannelCollection(Collection, PortChannelCollection):
         self.source_records.extend(xf_records)
 
     def itemize(self, rec: Dict) -> Dict:
+        ex_if = self.source.expands["interfaces"]
+
         return dict(
             hostname=normalize_hostname(rec["hostname"]),
-            interface=expand_interface(rec["intName"]),
-            portchan=expand_interface(rec["portchan"]),
+            interface=ex_if(rec["intName"]),
+            portchan=ex_if(rec["portchan"]),
         )
 
-    async def add_items(self, items: Dict, callback: Optional[CollectionCallback] = None):
+    async def add_items(
+        self, items: Dict, callback: Optional[CollectionCallback] = None
+    ):
         pass
 
-    async def update_items(self, items: Dict, callback: Optional[CollectionCallback] = None):
+    async def update_items(
+        self, items: Dict, callback: Optional[CollectionCallback] = None
+    ):
         pass
 
-    async def delete_items(self, items: Dict, callback: Optional[CollectionCallback] = None):
+    async def delete_items(
+        self, items: Dict, callback: Optional[CollectionCallback] = None
+    ):
         pass

@@ -26,6 +26,7 @@ from typing import Optional
 from aioipfabric.client import IPFabricClient
 from nauti.source import Source
 from nauti.config_models import SourcesModel
+from nauti.mappings import create_expander
 
 # -----------------------------------------------------------------------------
 # Private Imports
@@ -46,22 +47,38 @@ __all__ = ["IPFabricSource", "IPFabricClient"]
 #
 # -----------------------------------------------------------------------------
 
+
 class IPFabricSource(Source):
 
     name = NAUTI_SOURCE_NAME
     client_class = IPFabricClient
 
-    def __init__(self, source_config: Optional[SourcesModel] = None, **kwargs):
+    def __init__(self, config: Optional[SourcesModel] = None, **kwargs):
         super(IPFabricSource, self).__init__()
         initargs = dict()
 
-        if source_config:
-            initargs.update(dict(
-                base_url=source_config.default.url,
-                token=source_config.default.credentials.token.get_secret_value(),
-                **source_config.default.options
-            ))
+        self.config = config or {}
+
+        if config:
+            initargs.update(
+                dict(
+                    base_url=config.default.url,
+                    token=config.default.credentials.token.get_secret_value(),
+                    **config.default.options,
+                )
+            )
             initargs.update(kwargs)
+
+        if (expands := getattr(self.config, "expands", None)) is not None:
+            items = expands.items()
+            self.expands = {field: create_expander(mapping) for field, mapping in items}
+
+            self.deflates = {
+                field: create_expander(mapping.inv) for field, mapping in items
+            }
+        else:
+            self.expands = {}
+            self.deflates = {}
 
         self.client = IPFabricClient(**(initargs or kwargs))
 

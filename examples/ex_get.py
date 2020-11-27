@@ -19,7 +19,5 @@ from nauti.collection import get_collection
 
 load_default_config_file()
 
-src = get_source('ipfabric')
-src_col = get_collection(src, 'devices')
-await src.login()
-
+src = get_source("ipfabric")
+src_col = get_collection(src, "devices")

@@ -16,11 +16,7 @@
 
 
 from setuptools import setup, find_packages
-from nauti.entrypoints import (
-    find_collection_entrypoints, NAUTI_EP_COLLECTIONS,
-    find_source_entrypoints, NAUTI_EP_SOURCES
-)
-
+from pathlib import Path
 
 package_name = "nauti-ipfabric"
 package_version = open("VERSION").read().strip()
@@ -51,8 +47,10 @@ setup(
     include_package_data=True,
     install_requires=requirements(),
     entry_points={
-        NAUTI_EP_SOURCES: find_source_entrypoints('nauti_ipfabric'),
-        NAUTI_EP_COLLECTIONS: find_collection_entrypoints('nauti_ipfabric/collections')
+        "nauti.plugins": [
+            f"{fp.stem} = {fp.parent}.{fp.stem}"
+            for fp in Path("nauti_ipfabric").glob("[!_]*.py")
+        ]
     },
     classifiers=[
         "Development Status :: 3 - Alpha",

@@ -30,15 +30,15 @@ from aioipfabric.filters import parse_filter
 # -----------------------------------------------------------------------------
 
 from nauti.collection import Collection, CollectionCallback
-from nauti.collections.ipaddrs import IPAddrCollection
+from nauti.collections.devices import DeviceCollection
 from nauti_ipfabric.source import IPFabricSource
-from nauti.mappings import normalize_hostname, expand_interface
+from nauti.mappings import normalize_hostname
 
 # -----------------------------------------------------------------------------
 # Exports
 # -----------------------------------------------------------------------------
 
-__all__ = ['IPFabricIPAddrCollection']
+__all__ = ["IPFabricDeviceCollection"]
 
 
 # -----------------------------------------------------------------------------
@@ -47,41 +47,39 @@ __all__ = ['IPFabricIPAddrCollection']
 #
 # -----------------------------------------------------------------------------
 
-class IPFabricIPAddrCollection(Collection, IPAddrCollection):
+
+class IPFabricDeviceCollection(Collection, DeviceCollection):
 
     source_class = IPFabricSource
 
     async def fetch(self, **params):
-
         if (filters := params.get("filters")) is not None:
             params["filters"] = parse_filter(filters)
 
-        self.source_records.extend(
-            await self.source.client.fetch_table(
-                url="tables/addressing/managed-devs",
-                columns=["hostname", "intName", "siteName", "ip", "net"],
-                **params,
-            )
-        )
+        self.source_records.extend(await self.source.client.fetch_devices(**params))
 
     def itemize(self, rec: Dict) -> Dict:
-        try:
-            pflen = rec["net"].split("/")[-1]
-        except AttributeError:
-            pflen = "32"
+        return dict(
+            sn=rec.get("snHw") or rec["sn"],
+            hostname=normalize_hostname(rec["hostname"]),
+            ipaddr=rec["loginIp"],
+            site=self.map_field_value("site", rec["siteName"]),
+            os_name=self.map_field_value("os_name", rec["family"]),
+            vendor=self.map_field_value("vendor", rec["vendor"]),
+            model=self.map_field_value("model", rec["model"]),
+        )
 
-        return {
-            "ipaddr": f"{rec['ip']}/{pflen}",
-            "interface": expand_interface(rec["intName"]),
-            "hostname": normalize_hostname(rec["hostname"]),
-            "site": rec["siteName"],
-        }
+    async def add_items(
+        self, items: Dict, callback: Optional[CollectionCallback] = None
+    ):
+        raise NotImplementedError()
 
-    async def add_items(self, items: Dict, callback: Optional[CollectionCallback] = None):
-        pass
+    async def update_items(
+        self, items: Dict, callback: Optional[CollectionCallback] = None
+    ):
+        raise NotImplementedError()
 
-    async def update_items(self, items: Dict, callback: Optional[CollectionCallback] = None):
-        pass
-
-    async def delete_items(self, items: Dict, callback: Optional[CollectionCallback] = None):
-        pass
+    async def delete_items(
+        self, items: Dict, callback: Optional[CollectionCallback] = None
+    ):
+        raise NotImplementedError()

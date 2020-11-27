@@ -30,15 +30,15 @@ from aioipfabric.filters import parse_filter
 # -----------------------------------------------------------------------------
 
 from nauti.collection import Collection, CollectionCallback
-from nauti.collections.interfaces import InterfaceCollection
+from nauti.collections.ipaddrs import IPAddrCollection
 from nauti_ipfabric.source import IPFabricSource
-from nauti.mappings import expand_interface, normalize_hostname
+from nauti.mappings import normalize_hostname
 
 # -----------------------------------------------------------------------------
 # Exports
 # -----------------------------------------------------------------------------
 
-__all__ = ['IPFabricInterfaceCollection']
+__all__ = ["IPFabricIPAddrCollection"]
 
 
 # -----------------------------------------------------------------------------
@@ -47,7 +47,8 @@ __all__ = ['IPFabricInterfaceCollection']
 #
 # -----------------------------------------------------------------------------
 
-class IPFabricInterfaceCollection(Collection, InterfaceCollection):
+
+class IPFabricIPAddrCollection(Collection, IPAddrCollection):
 
     source_class = IPFabricSource
 
@@ -58,25 +59,36 @@ class IPFabricInterfaceCollection(Collection, InterfaceCollection):
 
         self.source_records.extend(
             await self.source.client.fetch_table(
-                url="/tables/inventory/interfaces",
-                columns=["hostname", "intName", "dscr", "siteName"],
+                url="tables/addressing/managed-devs",
+                columns=["hostname", "intName", "siteName", "ip", "net"],
                 **params,
             )
         )
 
     def itemize(self, rec: Dict) -> Dict:
+        try:
+            pflen = rec["net"].split("/")[-1]
+        except AttributeError:
+            pflen = "32"
+
         return {
-            "interface": expand_interface(rec["intName"]),
+            "ipaddr": f"{rec['ip']}/{pflen}",
+            "interface": self.source.expands["interface"](rec["intName"]),  # noqa
             "hostname": normalize_hostname(rec["hostname"]),
-            "description": rec["dscr"] or "",
             "site": rec["siteName"],
         }
 
-    async def add_items(self, items: Dict, callback: Optional[CollectionCallback] = None):
+    async def add_items(
+        self, items: Dict, callback: Optional[CollectionCallback] = None
+    ):
         pass
 
-    async def update_items(self, items: Dict, callback: Optional[CollectionCallback] = None):
+    async def update_items(
+        self, items: Dict, callback: Optional[CollectionCallback] = None
+    ):
         pass
 
-    async def delete_items(self, items: Dict, callback: Optional[CollectionCallback] = None):
+    async def delete_items(
+        self, items: Dict, callback: Optional[CollectionCallback] = None
+    ):
         pass

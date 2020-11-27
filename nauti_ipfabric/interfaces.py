@@ -19,6 +19,10 @@
 
 from typing import Dict, Optional
 
+# -----------------------------------------------------------------------------
+# Public Imports
+# -----------------------------------------------------------------------------
+
 from aioipfabric.filters import parse_filter
 
 # -----------------------------------------------------------------------------
@@ -26,7 +30,7 @@ from aioipfabric.filters import parse_filter
 # -----------------------------------------------------------------------------
 
 from nauti.collection import Collection, CollectionCallback
-from nauti.collections.devices import DeviceCollection
+from nauti.collections.interfaces import InterfaceCollection
 from nauti_ipfabric.source import IPFabricSource
 from nauti.mappings import normalize_hostname
 
@@ -34,7 +38,7 @@ from nauti.mappings import normalize_hostname
 # Exports
 # -----------------------------------------------------------------------------
 
-__all__ = ["IPFabricDeviceCollection"]
+__all__ = ["IPFabricInterfaceCollection"]
 
 
 # -----------------------------------------------------------------------------
@@ -44,32 +48,42 @@ __all__ = ["IPFabricDeviceCollection"]
 # -----------------------------------------------------------------------------
 
 
-class IPFabricDeviceCollection(Collection, DeviceCollection):
+class IPFabricInterfaceCollection(Collection, InterfaceCollection):
 
     source_class = IPFabricSource
 
     async def fetch(self, **params):
+
         if (filters := params.get("filters")) is not None:
             params["filters"] = parse_filter(filters)
 
-        self.source_records.extend(await self.source.client.fetch_devices(**params))
-
-    def itemize(self, rec: Dict) -> Dict:
-        return dict(
-            sn=rec.get('snHw') or rec['sn'],
-            hostname=normalize_hostname(rec["hostname"]),
-            ipaddr=rec["loginIp"],
-            site=rec["siteName"],
-            os_name=rec["family"],
-            vendor=rec["vendor"],
-            model=rec["model"],
+        self.source_records.extend(
+            await self.source.client.fetch_table(
+                url="/tables/inventory/interfaces",
+                columns=["hostname", "intName", "dscr", "siteName"],
+                **params,
+            )
         )
 
-    async def add_items(self, items: Dict, callback: Optional[CollectionCallback] = None):
-        raise NotImplementedError()
+    def itemize(self, rec: Dict) -> Dict:
+        return {
+            "interface": self.source.expands["interface"](rec["intName"]),  # noqa
+            "hostname": normalize_hostname(rec["hostname"]),
+            "description": rec["dscr"] or "",
+            "site": rec["siteName"],
+        }
 
-    async def update_items(self, items: Dict, callback: Optional[CollectionCallback] = None):
-        raise NotImplementedError()
+    async def add_items(
+        self, items: Dict, callback: Optional[CollectionCallback] = None
+    ):
+        pass
 
-    async def delete_items(self, items: Dict, callback: Optional[CollectionCallback] = None):
-        raise NotImplementedError()
+    async def update_items(
+        self, items: Dict, callback: Optional[CollectionCallback] = None
+    ):
+        pass
+
+    async def delete_items(
+        self, items: Dict, callback: Optional[CollectionCallback] = None
+    ):
+        pass
