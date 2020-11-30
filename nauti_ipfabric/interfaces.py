@@ -49,7 +49,6 @@ __all__ = ["IPFabricInterfaceCollection"]
 
 
 class IPFabricInterfaceCollection(Collection, InterfaceCollection):
-
     source_class = IPFabricSource
 
     async def fetch(self, **params):
@@ -57,13 +56,16 @@ class IPFabricInterfaceCollection(Collection, InterfaceCollection):
         if (filters := params.get("filters")) is not None:
             params["filters"] = parse_filter(filters)
 
-        self.source_records.extend(
-            await self.source.client.fetch_table(
-                url="/tables/inventory/interfaces",
-                columns=["hostname", "intName", "dscr", "siteName"],
-                **params,
-            )
+        records = await self.source.client.fetch_table(
+            url="/tables/inventory/interfaces",
+            columns=["hostname", "intName", "dscr", "siteName", "l1"],
+            **params,
         )
+
+        self.source_records.extend(records)
+
+    async def fetch_items(self, items: Dict):
+        raise NotImplementedError()
 
     def itemize(self, rec: Dict) -> Dict:
         return {
@@ -76,14 +78,14 @@ class IPFabricInterfaceCollection(Collection, InterfaceCollection):
     async def add_items(
         self, items: Dict, callback: Optional[CollectionCallback] = None
     ):
-        pass
+        raise NotImplementedError()
 
     async def update_items(
         self, items: Dict, callback: Optional[CollectionCallback] = None
     ):
-        pass
+        raise NotImplementedError()
 
     async def delete_items(
         self, items: Dict, callback: Optional[CollectionCallback] = None
     ):
-        pass
+        raise NotImplementedError()
