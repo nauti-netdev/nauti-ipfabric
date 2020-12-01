@@ -40,7 +40,6 @@ __all__ = ["IPFabricPortChannelCollection"]
 
 
 class IPFabricPortChannelCollection(Collection, PortChannelCollection):
-
     source_class = IPFabricSource
 
     async def fetch(self, **params):
@@ -68,13 +67,16 @@ class IPFabricPortChannelCollection(Collection, PortChannelCollection):
 
         self.source_records.extend(xf_records)
 
+    async def fetch_items(self, items: Dict):
+        raise NotImplementedError()
+
     def itemize(self, rec: Dict) -> Dict:
-        ex_if = self.source.expands["interfaces"]
+        exp_ifn = self.source.expands["interface"]  # noqa
 
         return dict(
             hostname=normalize_hostname(rec["hostname"]),
-            interface=ex_if(rec["intName"]),
-            portchan=ex_if(rec["portchan"]),
+            interface=exp_ifn(rec["intName"]),
+            portchan=exp_ifn(rec["portchan"]),
         )
 
     async def add_items(

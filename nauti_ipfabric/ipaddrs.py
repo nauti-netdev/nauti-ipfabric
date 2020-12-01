@@ -65,6 +65,9 @@ class IPFabricIPAddrCollection(Collection, IPAddrCollection):
             )
         )
 
+    async def fetch_items(self, items: Dict):
+        raise NotImplementedError()
+
     def itemize(self, rec: Dict) -> Dict:
         try:
             pflen = rec["net"].split("/")[-1]
