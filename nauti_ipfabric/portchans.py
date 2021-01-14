@@ -16,7 +16,7 @@
 from typing import Dict, Optional
 
 from aioipfabric.filters import parse_filter
-from aioipfabric.mixins.portchan import IPFPortChannels
+from aioipfabric.mixins.portchan import IPFPortChannelsMixin
 
 from nauti.collection import Collection, CollectionCallback
 from nauti.collections.portchans import PortChannelCollection
@@ -45,7 +45,7 @@ class IPFabricPortChannelCollection(Collection, PortChannelCollection):
     async def fetch(self, **params):
 
         api: IPFabricClient(IPFPortChannels) = self.source.client
-        api.mixin(IPFPortChannels)
+        api.mixin(IPFPortChannelsMixin)
 
         if (filters := params.get("filters")) is not None:
             params["filters"] = parse_filter(filters)
