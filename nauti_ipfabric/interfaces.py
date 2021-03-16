@@ -77,7 +77,7 @@ class IPFabricInterfaceCollection(Collection, InterfaceCollection):
         raise NotImplementedError()
 
     def itemize(self, rec: Dict) -> Dict:
-        hostname = rec['hostname'].lower()          # hostnames always used in lowercase form.
+        hostname = normalize_hostname(rec['hostname']).lower()          # hostnames always used in lowercase form.
         orig_if_name = rec['intName']
         os_name = self.cache['devices'].items[hostname]['os_name']
 

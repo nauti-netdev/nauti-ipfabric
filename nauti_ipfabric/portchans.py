@@ -18,7 +18,7 @@ from typing import Dict, Optional
 from aioipfabric.filters import parse_filter
 from aioipfabric.mixins.portchan import IPFPortChannelsMixin
 
-from nauti.collection import Collection, CollectionCallback
+from nauti.collection import Collection, CollectionCallback, get_collection
 from nauti.collections.portchans import PortChannelCollection
 from nauti_ipfabric.source import IPFabricSource, IPFabricClient
 
@@ -43,6 +43,15 @@ class IPFabricPortChannelCollection(Collection, PortChannelCollection):
     source_class = IPFabricSource
 
     async def fetch(self, **params):
+
+        # going to fetch the associated devices and store them into the
+        # collection cache so that these items/values can be used for filtering
+        # purposes.  For example, the User may want to filter out port-channels
+        # based on device model/family.
+
+        dev_col = self.cache['devices'] = get_collection(source=self.source, name='devices')
+        await dev_col.fetch(**params)
+        dev_col.make_keys('hostname')
 
         api: IPFabricClient(IPFPortChannels) = self.source.client
         api.mixin(IPFPortChannelsMixin)
