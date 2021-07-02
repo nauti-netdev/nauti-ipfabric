@@ -54,12 +54,21 @@ class IPFabricInterfaceCollection(Collection, InterfaceCollection):
     source_class = IPFabricSource
 
     async def fetch(self, **params):
+        """
+        params['hostname'] must be set to the hostname we want to fetch.
+        params['filters'] must be set to the IPF parsable-filter
+        """
 
         # We want to know information about the device, such as os_name, and we
         # will key this collection by the hostname value
 
-        dev_col = self.cache['devices'] = get_collection(source=self.source, name='devices')
-        await dev_col.fetch(**params)
+        dev_col = self.cache.setdefault('devices', get_collection(source=self.source, name='devices'))
+
+        if (hostname := params.pop('hostname', None)) is not None:
+            await dev_col.fetch(filters=f"hostname = '{hostname}'")
+        else:
+            await dev_col.fetch(**params)
+
         dev_col.make_keys('hostname')
 
         if (filters := params.get("filters")) is not None:
