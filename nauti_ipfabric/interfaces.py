@@ -48,7 +48,8 @@ __all__ = ["IPFabricInterfaceCollection"]
 #
 # -----------------------------------------------------------------------------
 
-_exos_port_match = re.compile(r'(\d+):(\d+)').match
+_exos_port_match = re.compile(r"(\d+):(\d+)").match
+
 
 class IPFabricInterfaceCollection(Collection, InterfaceCollection):
     source_class = IPFabricSource
@@ -62,21 +63,31 @@ class IPFabricInterfaceCollection(Collection, InterfaceCollection):
         # We want to know information about the device, such as os_name, and we
         # will key this collection by the hostname value
 
-        dev_col = self.cache.setdefault('devices', get_collection(source=self.source, name='devices'))
+        dev_col = self.cache.setdefault(
+            "devices", get_collection(source=self.source, name="devices")
+        )
 
-        if (hostname := params.pop('hostname', None)) is not None:
+        if (hostname := params.pop("hostname", None)) is not None:
             await dev_col.fetch(filters=f"hostname = '{hostname}'")
         else:
             await dev_col.fetch(**params)
 
-        dev_col.make_keys('hostname')
+        dev_col.make_keys("hostname")
 
         if (filters := params.get("filters")) is not None:
             params["filters"] = parse_filter(filters)
 
         records = await self.source.client.fetch_table(
             url="/tables/inventory/interfaces",
-            columns=["hostname", "intName", "dscr", "siteName", "l1", "primaryIp"],
+            columns=[
+                "hostname",
+                "intName",
+                "nameOriginal",
+                "dscr",
+                "siteName",
+                "l1",
+                "primaryIp",
+            ],
             **params,
         )
 
@@ -85,32 +96,32 @@ class IPFabricInterfaceCollection(Collection, InterfaceCollection):
     async def fetch_items(self, items: Dict):
         raise NotImplementedError()
 
-    def itemize(self, rec: Dict) -> Dict:
-        hostname = normalize_hostname(rec['hostname']).lower()          # hostnames always used in lowercase form.
-        orig_if_name = rec['intName']
-        os_name = self.cache['devices'].items[hostname]['os_name']
+    def itemize(self, rec: Dict) -> Optional[Dict]:
+        hostname = normalize_hostname(
+            rec["hostname"]
+        ).lower()  # hostnames always used in lowercase form.
+        if not (if_name := rec["nameOriginal"]):
+            return None
+
+        os_name = self.cache["devices"].items[hostname]["os_name"]
 
         # TODO: this is a bit of a hack for now, but we'll need to address how we want to
         #       perform mapping and filtering in more of a plugin/config-file mannter.
 
-        if os_name == 'exos':
+        if os_name == "exos":
             # if this is a physical port, it will take the form "<switch_id>:<port_id>"
-            if (mo := _exos_port_match(orig_if_name)):
-                sw_id, port_id = mo.groups()
-                if_name = f'Ethernet{port_id}' if sw_id == '1' else f'Ethernet{sw_id}/{port_id}'
+            if _exos_port_match(if_name):
+                pass
+                # sw_id, port_id = mo.groups()
+                # if_name = f'Ethernet{port_id}' if sw_id == '1' else f'Ethernet{sw_id}/{port_id}'
 
-            # otherwise this is a "VLAN" port, and we only want to keep those
+            # otherwise, this is a "VLAN" port, and we only want to keep those
             # that have an IP address assigned.  Other "VLAN ports" are just
             # VLANs and do not constitute a port.  EXOS joy.
 
             else:
-                if not rec['primaryIp']:
+                if not rec["primaryIp"]:
                     return None
-
-                if_name = orig_if_name
-
-        else:
-            if_name = self.source.expands["interface"](orig_if_name)
 
         return {
             "interface": if_name,

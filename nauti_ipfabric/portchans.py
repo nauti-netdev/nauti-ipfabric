@@ -12,7 +12,7 @@
 #
 #      You should have received a copy of the GNU General Public License
 #      along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
+import asyncio
 from typing import Dict, Optional
 
 from aioipfabric.filters import parse_filter
@@ -49,11 +49,14 @@ class IPFabricPortChannelCollection(Collection, PortChannelCollection):
         # purposes.  For example, the User may want to filter out port-channels
         # based on device model/family.
 
-        dev_col = self.cache['devices'] = get_collection(source=self.source, name='devices')
-        await dev_col.fetch(**params)
-        dev_col.make_keys('hostname')
+        dev_col = self.cache["devices"] = get_collection(
+            source=self.source, name="devices"
+        )
 
-        api: IPFabricClient(IPFPortChannels) = self.source.client
+        await dev_col.fetch(**params)
+        dev_col.make_keys("hostname")
+
+        api: IPFabricClient() = self.source.client
         api.mixin(IPFPortChannelsMixin)
 
         if (filters := params.get("filters")) is not None:
@@ -63,16 +66,38 @@ class IPFabricPortChannelCollection(Collection, PortChannelCollection):
         api.xf_portchannel_members(records)
 
         # invert these records to a flat list of fields.
+        xf_records = list()
 
-        xf_records = [
-            dict(
-                hostname=rec["hostname"],
-                intName=member["intName"],
-                portchan=rec["intName"],
-            )
-            for rec in records
-            for member in rec["members"]
-        ]
+        for rec in records:
+            for member in rec["members"]:
+                hostname = rec["hostname"]
+                pchan_name = rec["intName"]
+                member_name = member["intName"]
+
+                iface_pchan, iface_member = await asyncio.gather(
+                    self.source.client.fetch_table(
+                        url="/tables/inventory/interfaces",
+                        columns=["hostname", "intName", "nameOriginal"],
+                        filters=parse_filter(
+                            f"and(hostname={hostname}, intName={pchan_name})"
+                        ),
+                    ),
+                    self.source.client.fetch_table(
+                        url="/tables/inventory/interfaces",
+                        columns=["hostname", "intName", "nameOriginal"],
+                        filters=parse_filter(
+                            f"and(hostname={hostname}, intName={member_name})"
+                        ),
+                    ),
+                )
+
+                xf_records.append(
+                    dict(
+                        hostname=rec["hostname"],
+                        intName=iface_member[0]["nameOriginal"],
+                        portchan=iface_pchan[0]["nameOriginal"],
+                    )
+                )
 
         self.source_records.extend(xf_records)
 
@@ -80,12 +105,10 @@ class IPFabricPortChannelCollection(Collection, PortChannelCollection):
         raise NotImplementedError()
 
     def itemize(self, rec: Dict) -> Dict:
-        exp_ifn = self.source.expands["interface"]  # noqa
-
         return dict(
             hostname=normalize_hostname(rec["hostname"]),
-            interface=exp_ifn(rec["intName"]),
-            portchan=exp_ifn(rec["portchan"]),
+            interface=rec["intName"],
+            portchan=rec["portchan"],
         )
 
     async def add_items(
