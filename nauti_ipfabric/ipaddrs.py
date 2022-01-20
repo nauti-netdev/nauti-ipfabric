@@ -16,7 +16,7 @@
 # -----------------------------------------------------------------------------
 # System Imports
 # -----------------------------------------------------------------------------
-
+import asyncio
 from typing import Dict, Optional
 
 # -----------------------------------------------------------------------------
@@ -57,13 +57,34 @@ class IPFabricIPAddrCollection(Collection, IPAddrCollection):
         if (filters := params.get("filters")) is not None:
             params["filters"] = parse_filter(filters)
 
-        self.source_records.extend(
-            await self.source.client.fetch_table(
-                url="tables/addressing/managed-devs",
-                columns=["hostname", "intName", "siteName", "ip", "net"],
-                **params,
-            )
+        records = await self.source.client.fetch_table(
+            url="tables/addressing/managed-devs",
+            columns=["hostname", "intName", "siteName", "ip", "net"],
+            **params,
         )
+
+        # we want the device interface original-name (native name) so we no
+        # longer need to translate the IPF abbreviated interface names.
+
+        iftable_records = await asyncio.gather(*[
+            self.source.client.fetch_table(
+                url="/tables/inventory/interfaces",
+                columns=["hostname", "intName", "nameOriginal"],
+                filters=parse_filter(
+                    f"and(hostname={rec['hostname']}, intName={rec['intName']})"
+                ),
+            )
+            for rec in records])
+
+        map_iftable = {
+            (rec[0]['hostname'], rec[0]['intName']): rec[0]['nameOriginal']
+            for rec in iftable_records
+        }
+
+        for rec in records:
+            rec['nameOriginal'] = map_iftable[(rec['hostname'], rec['intName'])]
+
+        self.source_records.extend(records)
 
     async def fetch_items(self, items: Dict):
         raise NotImplementedError()
@@ -76,7 +97,7 @@ class IPFabricIPAddrCollection(Collection, IPAddrCollection):
 
         return {
             "ipaddr": f"{rec['ip']}/{pflen}",
-            "interface": self.source.expands["interface"](rec["intName"]),  # noqa
+            "interface": rec["nameOriginal"],
             "hostname": normalize_hostname(rec["hostname"]),
             "site": rec["siteName"],
         }
